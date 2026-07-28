@@ -1,0 +1,25 @@
+# Core dependencies
+torch>=2.0.0
+torchvision>=0.15.0
+numpy>=1.24.0
+pillow>=9.5.0
+
+# Data handling
+tqdm>=4.65.0
+pyyaml>=6.0
+
+# Visualization
+matplotlib>=3.7.0
+tensorboard>=2.13.0
+
+# Jupyter notebooks
+jupyter>=1.0.0
+ipykernel>=6.23.0
+
+# Optional: For evaluation metrics
+# pytorch-fid>=0.3.0
+
+# Optional: For advanced features
+# clip-by-openai>=1.0
+# accelerate>=0.20.0
+
