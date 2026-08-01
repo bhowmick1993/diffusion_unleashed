@@ -9,10 +9,10 @@ from PIL import Image
 
 # Change this to the folder containing:
 # data_batch_1, ..., data_batch_5, test_batch, batches.meta
-CIFAR10_FOLDER = Path(r"C:\\AB_Personal\\diffusion_101\\CIFAR_10\\cifar-10-python\\cifar-10-batches-py")
+CIFAR10_FOLDER = Path(r"/home/b629/Project/own_projects/cifar_10/cifar-10-batches-py")
 
 # Folder where individual PNG images will be stored
-OUTPUT_FOLDER = Path(r"C:\\AB_Personal\\diffusion_101\\CIFAR_10\\cifar-10-python\\cifar_10_images")
+OUTPUT_FOLDER = Path(r"/home/b629/Project/own_projects/cifar_10/cifar_10_images")
 
 
 def load_pickle(file_path: Path) -> dict:

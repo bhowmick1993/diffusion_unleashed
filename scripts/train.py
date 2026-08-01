@@ -3,7 +3,7 @@ Training script for diffusion models.
 """
 import os
 import sys
-sys.path.append(r"C:\AB_Personal\diffusion_101\Diffusion-101")
+sys.path.append(r"/home/b629/Project/own_projects/diffusion_unleashed")
 import argparse
 import yaml
 import torch
@@ -13,6 +13,7 @@ from src.models.unet import UNet
 from src.models.diffusion import DiffusionModel
 from src.data.dataset import ImageDataset
 from src.training.trainer import Trainer
+import mlflow
 
 
 def load_config(config_path):
@@ -107,8 +108,17 @@ def main():
         device=device,
         output_dir=config['training']['output_dir']
     )
-    
-    # Train
+    """
+    #mlflow.set_experiment(config['tags']['experiment_name'])
+    #run_name = config['tags']['run_name']
+    #with mlflow.start_run(run_name=run_name):
+        mlflow.set_tags(config['tags'])
+        mlflow.log_params(config["model"])
+        mlflow.log_params(config["diffusion"])
+        mlflow.log_params(config["training"])
+        mlflow.log_params(config["data"])
+        # Train
+    """
     trainer.train()
 
 

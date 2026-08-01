@@ -1,5 +1,13 @@
 # Default configuration for diffusion model training
 
+experiment_name: diffusion_unleashed
+run_name: simple_unet_training
+tags:
+  experiment: simple unet diffusion
+  dataset: cifar_10
+  model: simple unet
+  diffusion: ddpm
+  date: 2026-08-01
 # Model parameters
 model:
   in_channels: 3
@@ -17,7 +25,7 @@ diffusion:
 
 # Data parameters
 data:
-  root_dir: C:\\AB_Personal\\diffusion_101\\CIFAR_10\\cifar-10-python\\cifar_10_images
+  root_dir: /home/b629/Project/own_projects/cifar_10/cifar_10_images
   image_size: 64
   batch_size: 32
   num_workers: 4
@@ -25,9 +33,9 @@ data:
 
 # Training parameters
 training:
-  num_epochs: 100
+  num_epochs: 5
   learning_rate: 0.0001
-  device: cpu  # 'cuda' or 'cpu'
+  device: cuda  # 'cuda' or 'cpu'
   output_dir: outputs
   save_every: 10  # Save checkpoint every N epochs
 
