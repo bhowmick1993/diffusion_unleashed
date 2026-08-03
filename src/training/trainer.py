@@ -8,6 +8,7 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 import os
+import mlflow
 
 
 class Trainer:
@@ -26,14 +27,16 @@ class Trainer:
     def __init__(
         self,
         model,
-        dataloader,
+        train_dataloader,
+        val_dataloader,
         num_epochs=100,
         lr=1e-4,
         device='cuda',
         output_dir='outputs'
     ):
         self.model = model
-        self.dataloader = dataloader
+        self.train_dataloader = train_dataloader
+        self.val_dataloader = val_dataloader
         self.num_epochs = num_epochs
         self.device = device
         self.output_dir = output_dir
@@ -48,12 +51,18 @@ class Trainer:
         
         self.global_step = 0
     
-    def train_epoch(self, epoch):
+    def train_epoch(self, epoch, mode='train'):
         """Train for one epoch."""
-        self.model.model.train()
+        if mode == 'train':
+            self.model.model.train()
+            dataloader = self.train_dataloader
+        else:
+            self.model.model.eval()
+            dataloader = self.val_dataloader
         total_loss = 0
         
-        pbar = tqdm(self.dataloader, desc=f'Epoch {epoch+1}/{self.num_epochs}')
+        
+        pbar = tqdm(dataloader, desc=f'Epoch {epoch+1}/{self.num_epochs}')
         
         for batch_idx, images in enumerate(pbar):
             images = images.to(self.device)
@@ -68,9 +77,10 @@ class Trainer:
             loss = self.model.compute_loss(images, t)
             
             # Backward pass
-            self.optimizer.zero_grad()
-            loss.backward()
-            self.optimizer.step()
+            if mode == 'train':
+                self.optimizer.zero_grad()
+                loss.backward()
+                self.optimizer.step()
             
             total_loss += loss.item()
             self.global_step += 1
@@ -83,10 +93,10 @@ class Trainer:
             
             pbar.set_postfix({'loss': f'{loss.item():.4f}'})
         
-        avg_loss = total_loss / len(self.dataloader)
+        avg_loss = total_loss / len(dataloader)
         return avg_loss
     
-    def save_checkpoint(self, epoch, loss):
+    def save_checkpoint(self, epoch, train_loss, val_loss):
         """Save model checkpoint."""
         checkpoint_dir = os.path.join(self.output_dir, 'checkpoints')
         os.makedirs(checkpoint_dir, exist_ok=True)
@@ -100,9 +110,10 @@ class Trainer:
             'model_state_dict': self.model.model.state_dict(),
             'optimizer_state_dict': self.optimizer.state_dict(),
             'scheduler_state_dict': self.scheduler.state_dict(),
-            'loss': loss,
+            'train_loss': train_loss,
+            'val_loss': val_loss,
         }, checkpoint_path)
-        
+        mlflow.log_artifact(checkpoint_path, artifact_path='checkpoints')
         print(f"Checkpoint saved: {checkpoint_path}")
     
     def train(self):
@@ -112,15 +123,17 @@ class Trainer:
         print(f"Model parameters: {sum(p.numel() for p in self.model.model.parameters()):,}")
         
         for epoch in range(self.num_epochs):
-            avg_loss = self.train_epoch(epoch)
+            avg_train_loss = self.train_epoch(epoch, mode='train')
+            mlflow.log_metric('train_loss', avg_train_loss, step=epoch+1 )
+            avg_val_loss = self.train_epoch(epoch, mode='val')
+            mlflow.log_metric('val_loss', avg_val_loss, step=epoch+1)
             self.scheduler.step()
             
-            print(f'Epoch {epoch+1}/{self.num_epochs} completed. Average Loss: {avg_loss:.4f}')
+            print(f'Epoch {epoch+1}/{self.num_epochs} completed. Average Train Loss: {avg_train_loss:.4f}, Average Val Loss: {avg_val_loss:.4f}')
             
             # Save checkpoint
-            if (epoch + 1) % 10 == 0 or epoch == 0:
-                self.save_checkpoint(epoch, avg_loss)
-        
+            if (epoch + 1) % 1 == 0 or epoch == 0:
+                self.save_checkpoint(epoch, avg_train_loss, avg_val_loss)        
         self.writer.close()
         print("Training completed!")
     

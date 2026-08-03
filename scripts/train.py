@@ -2,19 +2,22 @@
 Training script for diffusion models.
 """
 import os
+import mlflow
 import sys
 sys.path.append(r"/home/b629/Project/own_projects/diffusion_unleashed")
 import argparse
 import yaml
 import torch
+from pathlib import Path
 from torch.utils.data import DataLoader
-
 from src.models.unet import UNet
 from src.models.diffusion import DiffusionModel
 from src.data.dataset import ImageDataset
 from src.training.trainer import Trainer
-import mlflow
 
+MLRUNS = Path(__file__).resolve().parents[1] / "mlruns"
+MLRUNS.mkdir(parents=True, exist_ok=True)
+mlflow.set_tracking_uri(MLRUNS.as_uri())
 
 def load_config(config_path):
     """Load configuration from YAML file."""
@@ -67,17 +70,36 @@ def main():
         os.path.join(config['data']['root_dir'],'train'),
         image_size=config['data']['image_size']
     )
+    validation_size = int(len(dataset) * config['data']['val_split'])
+    training_size = len(dataset) - validation_size
     
-    dataloader = DataLoader(
+    generator = torch.Generator().manual_seed(42)
+    train_dataset, val_dataset = torch.utils.data.random_split(
         dataset,
+        [training_size, validation_size],
+        generator=generator
+    )
+
+    train_dataloader = DataLoader(
+        train_dataset,
         batch_size=config['data']['batch_size'],
         shuffle=True,
         num_workers=config['data']['num_workers'],
         pin_memory=config['data']['pin_memory']
     )
+
+    validation_dataloader = DataLoader(
+        val_dataset,
+        batch_size=config['data']['batch_size'],
+        shuffle=False,
+        num_workers=config['data']['num_workers'],
+        pin_memory=config['data']['pin_memory']
+    )
     
-    print(f"Dataset size: {len(dataset)}")
-    print(f"Number of batches: {len(dataloader)}")
+    print(f"Training dataset size: {len(train_dataset)}")
+    print(f"Validation dataset size: {len(val_dataset)}")
+    print(f"Number of training batches: {len(train_dataloader)}")
+    print(f"Number of validation batches: {len(validation_dataloader)}")
     
     # Create model
     print("Creating model...")
@@ -102,24 +124,24 @@ def main():
     # Create trainer
     trainer = Trainer(
         model=diffusion_model,
-        dataloader=dataloader,
+        train_dataloader = train_dataloader,
+        val_dataloader = validation_dataloader,
         num_epochs=config['training']['num_epochs'],
         lr=config['training']['learning_rate'],
         device=device,
         output_dir=config['training']['output_dir']
     )
-    """
-    #mlflow.set_experiment(config['tags']['experiment_name'])
-    #run_name = config['tags']['run_name']
-    #with mlflow.start_run(run_name=run_name):
+    
+    mlflow.set_experiment(config['experiment_name'])
+    run_name = config['run_name']
+    with mlflow.start_run(run_name=run_name):
         mlflow.set_tags(config['tags'])
         mlflow.log_params(config["model"])
         mlflow.log_params(config["diffusion"])
         mlflow.log_params(config["training"])
         mlflow.log_params(config["data"])
         # Train
-    """
-    trainer.train()
+        trainer.train()
 
 
 if __name__ == '__main__':
